@@ -4,6 +4,9 @@
  *
  * Created on: Dec 12, 2016
  * Author: Tiffany Huang
+ * 
+ * Modified on Nov 2019
+ * by HamidReza Mirkhani
  */
 
 #ifndef PARTICLE_FILTER_H_
@@ -13,7 +16,9 @@
 #include <vector>
 #include "helper_functions.h"
 
-struct Particle {
+struct Particle
+{
+public:
   int id;
   double x;
   double y;
@@ -24,15 +29,34 @@ struct Particle {
   std::vector<double> sense_y;
 };
 
+class ParticleFilter
+{
+private:
+  // Number of particles to draw
+  int particles_count_;
 
-class ParticleFilter {  
- public:
+  // Flag, if filter is initialized
+  bool is_initialized_;
+
+  // Vector of weights of all particles
+  std::vector<double> weights_;
+
+public:
+  // Set of current particles
+  std::vector<Particle> particles_;
+
   // Constructor
-  // @param num_particles Number of particles
-  ParticleFilter() : num_particles(0), is_initialized(false) {}
+  // @param particles_count_ Number of particles
+  ParticleFilter() : particles_count_(0), is_initialized_(false)
+  {
+
+  }
 
   // Destructor
-  ~ParticleFilter() {}
+  ~ParticleFilter()
+  {
+
+  }
 
   /**
    * init Initializes particle filter by initializing particles to Gaussian
@@ -43,7 +67,7 @@ class ParticleFilter {
    * @param std[] Array of dimension 3 [standard deviation of x [m], 
    *   standard deviation of y [m], standard deviation of yaw [rad]]
    */
-  void init(double x, double y, double theta, double std[]);
+  void init(const double &x, const double &y, const double &theta, const double std[]);
 
   /**
    * prediction Predicts the state for the next time step
@@ -54,18 +78,16 @@ class ParticleFilter {
    * @param velocity Velocity of car from t to t+1 [m/s]
    * @param yaw_rate Yaw rate of car from t to t+1 [rad/s]
    */
-  void prediction(double delta_t, double std_pos[], double velocity, 
-                  double yaw_rate);
-  
+  void prediction(double delta_t, double std_pos[], double velocity, double yaw_rate);
+
   /**
    * dataAssociation Finds which observations correspond to which landmarks 
    *   (likely by using a nearest-neighbors data association).
    * @param predicted Vector of predicted landmark observations
    * @param observations Vector of landmark observations
    */
-  void dataAssociation(std::vector<LandmarkObs> predicted, 
-                       std::vector<LandmarkObs>& observations);
-  
+  void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs> &observations);
+
   /**
    * updateWeights Updates the weights for each particle based on the likelihood
    *   of the observed measurements. 
@@ -75,10 +97,8 @@ class ParticleFilter {
    * @param observations Vector of landmark observations
    * @param map Map class containing map landmarks
    */
-  void updateWeights(double sensor_range, double std_landmark[], 
-                     const std::vector<LandmarkObs> &observations,
-                     const Map &map_landmarks);
-  
+  void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs> &observations, const Map &map_landmarks);
+
   /**
    * resample Resamples from the updated set of particles to form
    *   the new set of particles.
@@ -91,15 +111,16 @@ class ParticleFilter {
    * This can be a very useful debugging tool to make sure transformations 
    *   are correct and assocations correctly connected
    */
-  void SetAssociations(Particle& particle, const std::vector<int>& associations,
-                       const std::vector<double>& sense_x, 
-                       const std::vector<double>& sense_y);
+  void SetAssociations(Particle &particle, const std::vector<int> &associations,
+                       const std::vector<double> &sense_x,
+                       const std::vector<double> &sense_y);
 
   /**
    * initialized Returns whether particle filter is initialized yet or not.
    */
-  const bool initialized() const {
-    return is_initialized;
+  const bool initialized() const
+  {
+    return is_initialized_;
   }
 
   /**
@@ -108,18 +129,6 @@ class ParticleFilter {
   std::string getAssociations(Particle best);
   std::string getSenseCoord(Particle best, std::string coord);
 
-  // Set of current particles
-  std::vector<Particle> particles;
-
- private:
-  // Number of particles to draw
-  int num_particles; 
-  
-  // Flag, if filter is initialized
-  bool is_initialized;
-  
-  // Vector of weights of all particles
-  std::vector<double> weights; 
 };
 
-#endif  // PARTICLE_FILTER_H_
+#endif // PARTICLE_FILTER_H_

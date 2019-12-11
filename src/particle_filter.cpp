@@ -1,9 +1,12 @@
 /**
- * particle_filter.cpp
+ * particle_filter.cpp 
  *
  * Created on: Dec 12, 2016
  * Author: Tiffany Huang
- */
+  * 
+ * Modified on Nov 2019
+ * by HamidReza Mirkhani
+*/
 
 #include "particle_filter.h"
 
@@ -21,21 +24,43 @@
 using std::string;
 using std::vector;
 
-void ParticleFilter::init(double x, double y, double theta, double std[]) {
+void ParticleFilter::init(const double &x, const double &y, const double &theta, const double std_devs[])
+{
   /**
-   * TODO: Set the number of particles. Initialize all particles to 
-   *   first position (based on estimates of x, y, theta and their uncertainties
-   *   from GPS) and all weights to 1. 
-   * TODO: Add random Gaussian noise to each particle.
-   * NOTE: Consult particle_filter.h for more information about this method 
-   *   (and others in this file).
+   * 1. Set the number of particles. 
+   * 2. Initialize all particles to the first position (based on estimates of x, y, theta and their uncertainties from GPS) and all weights to 1. 
+   * 3. Add random Gaussian noise to each particle.
    */
-  num_particles = 0;  // TODO: Set the number of particles
 
+  // particles_count_ = *(&std_devs + 1) - std_devs;  // in case an input array is given
+  
+  Particle *particle;
+  
+  std::default_random_engine random_generator;
+
+  std::normal_distribution<double> distribution_x(x, std_devs[0]);
+  std::normal_distribution<double> distribution_y(y, std_devs[1]);
+  std::normal_distribution<double> distribution_theta(theta, std_devs[2]);
+
+  particles_count_ = 1000;
+
+  particles_.reserve(particles_count_);
+
+  for(int i = 0; i < particles_count_; ++i)
+  {
+    // particle = &particles_[i] = Particle();
+    particles_[i] = *(particle = new Particle());
+
+    particle->id = i;
+    particle->x = distribution_x(random_generator);
+    particle->y = distribution_y(random_generator);
+    particle->theta = distribution_theta(random_generator);
+    particle->weight = 1.0;
+  }
 }
 
-void ParticleFilter::prediction(double delta_t, double std_pos[], 
-                                double velocity, double yaw_rate) {
+void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate)
+{
   /**
    * TODO: Add measurements to each particle and add random Gaussian noise.
    * NOTE: When adding noise you may find std::normal_distribution 
@@ -43,11 +68,10 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
    *  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
    *  http://www.cplusplus.com/reference/random/default_random_engine/
    */
-
 }
 
-void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted, 
-                                     vector<LandmarkObs>& observations) {
+void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted, vector<LandmarkObs> &observations)
+{
   /**
    * TODO: Find the predicted measurement that is closest to each 
    *   observed measurement and assign the observed measurement to this 
@@ -56,12 +80,12 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
    *   probably find it useful to implement this method and use it as a helper 
    *   during the updateWeights phase.
    */
-
 }
 
-void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
-                                   const vector<LandmarkObs> &observations, 
-                                   const Map &map_landmarks) {
+void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
+                                   const vector<LandmarkObs> &observations,
+                                   const Map &map_landmarks)
+{
   /**
    * TODO: Update the weights of each particle using a mult-variate Gaussian 
    *   distribution. You can read more about this distribution here: 
@@ -75,54 +99,59 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    *   and the following is a good resource for the actual equation to implement
    *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
    */
-
 }
 
-void ParticleFilter::resample() {
+void ParticleFilter::resample()
+{
   /**
    * TODO: Resample particles with replacement with probability proportional 
    *   to their weight. 
    * NOTE: You may find std::discrete_distribution helpful here.
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
-
 }
 
-void ParticleFilter::SetAssociations(Particle& particle, 
-                                     const vector<int>& associations, 
-                                     const vector<double>& sense_x, 
-                                     const vector<double>& sense_y) {
-  // particle: the particle to which assign each listed association, 
+void ParticleFilter::SetAssociations(Particle &particle,
+                                     const vector<int> &associations,
+                                     const vector<double> &sense_x,
+                                     const vector<double> &sense_y)
+{
+  // particle: the particle to which assign each listed association,
   //   and association's (x,y) world coordinates mapping
   // associations: The landmark id that goes along with each listed association
   // sense_x: the associations x mapping already converted to world coordinates
   // sense_y: the associations y mapping already converted to world coordinates
-  particle.associations= associations;
+  particle.associations = associations;
   particle.sense_x = sense_x;
   particle.sense_y = sense_y;
 }
 
-string ParticleFilter::getAssociations(Particle best) {
+string ParticleFilter::getAssociations(Particle best)
+{
   vector<int> v = best.associations;
   std::stringstream ss;
   copy(v.begin(), v.end(), std::ostream_iterator<int>(ss, " "));
   string s = ss.str();
-  s = s.substr(0, s.length()-1);  // get rid of the trailing space
+  s = s.substr(0, s.length() - 1); // get rid of the trailing space
   return s;
 }
 
-string ParticleFilter::getSenseCoord(Particle best, string coord) {
+string ParticleFilter::getSenseCoord(Particle best, string coord)
+{
   vector<double> v;
 
-  if (coord == "X") {
+  if (coord == "X")
+  {
     v = best.sense_x;
-  } else {
+  }
+  else
+  {
     v = best.sense_y;
   }
 
   std::stringstream ss;
   copy(v.begin(), v.end(), std::ostream_iterator<float>(ss, " "));
   string s = ss.str();
-  s = s.substr(0, s.length()-1);  // get rid of the trailing space
+  s = s.substr(0, s.length() - 1); // get rid of the trailing space
   return s;
 }
