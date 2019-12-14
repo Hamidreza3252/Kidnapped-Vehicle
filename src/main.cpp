@@ -38,7 +38,7 @@ int main()
   double sensor_range = 50; // Sensor range [m]
 
   // GPS measurement uncertainty [x [m], y [m], theta [rad]]
-  double sigma_pos[3] = {0.3, 0.3, 0.01};
+  double pos_sigmas[3] = {0.3, 0.3, 0.01};
   // Landmark measurement uncertainty [x [m], y [m]]
   double sigma_landmark[2] = {0.3, 0.3};
 
@@ -53,7 +53,7 @@ int main()
   // Create particle filter
   ParticleFilter pf;
 
-  h.onMessage([&pf, &map, &delta_t, &sensor_range, &sigma_pos, &sigma_landmark](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&pf, &map, &delta_t, &sensor_range, &pos_sigmas, &sigma_landmark](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                                                                                 uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -78,20 +78,18 @@ int main()
             double sense_y = std::stod(j[1]["sense_y"].get<string>());
             double sense_theta = std::stod(j[1]["sense_theta"].get<string>());
 
-            pf.init(sense_x, sense_y, sense_theta, sigma_pos);
+            pf.init(sense_x, sense_y, sense_theta, pos_sigmas);
           }
           else
           {
-            // Predict the vehicle's next state from previous
-            //   (noiseless control) data.
+            // Predict the vehicle's next state from previous (noiseless control) data. 
             double previous_velocity = std::stod(j[1]["previous_velocity"].get<string>());
             double previous_yawrate = std::stod(j[1]["previous_yawrate"].get<string>());
 
-            pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
+            pf.prediction(delta_t, pos_sigmas, previous_velocity, previous_yawrate);
           }
 
-          // receive noisy observation data from the simulator
-          // sense_observations in JSON format
+          // receive noisy observation data from the simulator sense_observations in JSON format
           //   [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}]
           vector<LandmarkObs> noisy_observations;
           string sense_observations_x = j[1]["sense_observations_x"];
