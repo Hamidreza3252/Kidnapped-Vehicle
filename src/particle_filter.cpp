@@ -92,7 +92,8 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
   }
 }
 
-void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted, vector<LandmarkObs> &observations)
+// void ParticleFilter::dataAssociation(vector<LandmarkObs> &predicted, const vector<LandmarkObs> &observations)
+void ParticleFilter::dataAssociation(vector<LandmarkObservation> &predicted_observations, const vector<LandmarkObservation> &landmark_observations)
 {
   /**
    * TODO: Find the predicted measurement that is closest to each 
@@ -101,11 +102,43 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted, vector<Landm
    * NOTE: this method will NOT be called by the grading code. But you will 
    *   probably find it useful to implement this method and use it as a helper 
    *   during the updateWeights phase.
+   * 
+   * set the id of each predicted observations
    */
+
+  double obtained_distance;
+  double shortest_distance;
+  int landmark_id = -1;
+  // LandmarkObservation *selected_landmark;
+
+  for (int i = 0; i < predicted_observations.size(); ++i)
+  {
+    if (predicted_observations[i].id != -1)
+    {
+      continue;
+    }
+
+    shortest_distance = std::numeric_limits<double>::max();
+
+    for (int j = 0; j < landmark_observations.size(); ++j)
+    {
+      obtained_distance = dist(predicted_observations[i].x, predicted_observations[i].y, 
+          landmark_observations[j].x, landmark_observations[j].y);
+      
+      if (obtained_distance < shortest_distance)
+      {
+        shortest_distance = obtained_distance;
+        landmark_id = landmark_observations[j].id;
+      }
+    }
+
+    predicted_observations[i].id = landmark_id;
+  }
+
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
-                                   const vector<LandmarkObs> &observations,
+                                   const vector<LandmarkObservation> &observations,
                                    const Map &map_landmarks)
 {
   /**
@@ -133,7 +166,7 @@ void ParticleFilter::resample()
    */
 }
 
-void ParticleFilter::SetAssociations(Particle &particle,
+void ParticleFilter::setAssociations(Particle &particle,
                                      const vector<int> &associations,
                                      const vector<double> &sense_x,
                                      const vector<double> &sense_y)

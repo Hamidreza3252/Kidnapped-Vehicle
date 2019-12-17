@@ -24,7 +24,7 @@ public:
   double y;
   double theta;
   double weight;
-  std::vector<int> associations;
+  std::vector<int> associations; // The landmark ids that goes along with each listed association
   std::vector<double> sense_x;
   std::vector<double> sense_y;
 };
@@ -83,10 +83,12 @@ public:
   /**
    * dataAssociation Finds which observations correspond to which landmarks 
    *   (likely by using a nearest-neighbors data association).
-   * @param predicted Vector of predicted landmark observations
-   * @param observations Vector of landmark observations
+   * @param predicted_observations Vector of predicted landmark observations
+   * predicted[i]: the predicted measurement for the map landmark corresponding to the ith measurement
+   * @param landmark_observations Vector of landmark observations
    */
-  void dataAssociation(std::vector<LandmarkObs> &predicted, const std::vector<LandmarkObs> &observations);
+  void dataAssociation(std::vector<LandmarkObs> &predicted_observations, const vector<LandmarkObs> &landmark_observations);
+  // void dataAssociation(std::vector<LandmarkObs> &predicted, const std::vector<LandmarkObs> &observations);
 
   /**
    * updateWeights Updates the weights for each particle based on the likelihood

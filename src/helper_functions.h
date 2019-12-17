@@ -33,7 +33,7 @@ struct control_s
 /**
  * Struct representing one ground truth position.
  */
-struct ground_truth
+struct GroundTruth
 {
   double x;     // Global vehicle x position [m]
   double y;     // Global vehicle y position
@@ -43,12 +43,17 @@ struct ground_truth
 /**
  * Struct representing one landmark observation measurement.
  */
-struct LandmarkObs
+struct LandmarkObservation
 {
 
   int id;   // Id of matching landmark in the map.
   double x; // Local (vehicle coords) x position of landmark observation [m]
   double y; // Local (vehicle coords) y position of landmark observation [m]
+
+  LandmarkObservation(void)
+  {
+    id = -1;
+  }
 };
 
 /**
@@ -180,7 +185,7 @@ inline bool read_control_data(std::string filename,
  * @param filename Name of file containing ground truth.
  * @output True if opening and reading file was successful
  */
-inline bool read_gt_data(std::string filename, std::vector<ground_truth> &gt)
+inline bool read_gt_data(std::string filename, std::vector<GroundTruth> &gt)
 {
   // Get file of position measurements
   std::ifstream in_file_pos(filename.c_str(), std::ifstream::in);
@@ -203,7 +208,7 @@ inline bool read_gt_data(std::string filename, std::vector<ground_truth> &gt)
     double x, y, azimuth;
 
     // Declare single ground truth
-    ground_truth single_gt;
+    GroundTruth single_gt;
 
     //read data from line to values
     iss_pos >> x;
@@ -227,7 +232,7 @@ inline bool read_gt_data(std::string filename, std::vector<ground_truth> &gt)
  * @output True if opening and reading file was successful
  */
 inline bool read_landmark_data(std::string filename,
-                               std::vector<LandmarkObs> &observations)
+                               std::vector<LandmarkObservation> &observations)
 {
   // Get file of landmark measurements
   std::ifstream in_file_obs(filename.c_str(), std::ifstream::in);
@@ -254,7 +259,7 @@ inline bool read_landmark_data(std::string filename,
     iss_obs >> local_y;
 
     // Declare single landmark measurement
-    LandmarkObs meas;
+    LandmarkObservation meas;
 
     // Set values
     meas.x = local_x;
