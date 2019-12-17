@@ -18,6 +18,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <list>
 
 #include "helper_functions.h"
 
@@ -96,34 +97,46 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
 void ParticleFilter::dataAssociation(vector<LandmarkObservation> &predicted_observations, const vector<LandmarkObservation> &landmark_observations)
 {
   /**
-   * TODO: Find the predicted measurement that is closest to each 
+   * This method finds the predicted measurement that is closest to each 
    *   observed measurement and assign the observed measurement to this 
-   *   particular landmark.
+   *   particular landmark. This is done by setting the id of each predicted observations. 
    * NOTE: this method will NOT be called by the grading code. But you will 
    *   probably find it useful to implement this method and use it as a helper 
    *   during the updateWeights phase.
-   * 
-   * set the id of each predicted observations
    */
 
   double obtained_distance;
   double shortest_distance;
   int landmark_id = -1;
+  std::list<int> selected_ids;
   // LandmarkObservation *selected_landmark;
+  LandmarkObservation *predicted_observation;
+  const LandmarkObservation *landmark_observation;
 
-  for (int i = 0; i < predicted_observations.size(); ++i)
+  for (long unsigned int i = 0; i < predicted_observations.size(); ++i)
   {
-    if (predicted_observations[i].id != -1)
+    predicted_observation = &predicted_observations[i];
+
+    if (predicted_observation->id != -1)
     {
       continue;
     }
 
     shortest_distance = std::numeric_limits<double>::max();
 
-    for (int j = 0; j < landmark_observations.size(); ++j)
+    for (long unsigned int j = 0; j < landmark_observations.size(); ++j)
     {
-      obtained_distance = dist(predicted_observations[i].x, predicted_observations[i].y, 
-          landmark_observations[j].x, landmark_observations[j].y);
+      landmark_observation = &landmark_observations[j];
+
+      bool found = (std::find(selected_ids.begin(), selected_ids.end(), landmark_observation->id) != selected_ids.end());
+
+      if(found)
+      {
+        continue;
+      }
+
+      obtained_distance = dist(predicted_observation->x, predicted_observation->y, 
+          landmark_observation->x, landmark_observation->y);
       
       if (obtained_distance < shortest_distance)
       {
@@ -132,9 +145,9 @@ void ParticleFilter::dataAssociation(vector<LandmarkObservation> &predicted_obse
       }
     }
 
-    predicted_observations[i].id = landmark_id;
+    predicted_observation->id = landmark_id;
+    selected_ids.push_back(landmark_id);
   }
-
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
