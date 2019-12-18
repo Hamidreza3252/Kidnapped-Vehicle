@@ -271,4 +271,14 @@ inline bool read_landmark_data(std::string filename,
   return true;
 }
 
+inline double transform_x_l2g(double xl, double yl, double xp, double theta)
+{
+  return xl*std::cos(theta) - yl*std::sin(theta) + xp;
+}
+
+inline double transform_y_l2g(double xl, double yl, double yp, double theta)
+{
+  return xl*std::sin(theta) + yl*std::cos(theta) + yp;
+}
+
 #endif // HELPER_FUNCTIONS_H_

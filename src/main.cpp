@@ -109,7 +109,7 @@ int main()
                     std::istream_iterator<float>(),
                     std::back_inserter(y_sense));
 
-          for (long unsigned int i = 0; i < x_sense.size(); ++i)
+          for (unsigned long int i = 0; i < x_sense.size(); ++i)
           {
             LandmarkObservation obs;
             obs.x = x_sense[i];

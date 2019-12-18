@@ -94,7 +94,7 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
 }
 
 // void ParticleFilter::dataAssociation(vector<LandmarkObs> &predicted, const vector<LandmarkObs> &observations)
-void ParticleFilter::dataAssociation(vector<LandmarkObservation> &predicted_observations, const vector<LandmarkObservation> &landmark_observations)
+void ParticleFilter::dataAssociation(std::vector<LandmarkObservation> &predicted_observations, const std::vector<LandmarkObservation> &landmark_observations)
 {
   /**
    * This method finds the predicted measurement that is closest to each 
@@ -108,10 +108,14 @@ void ParticleFilter::dataAssociation(vector<LandmarkObservation> &predicted_obse
   double obtained_distance;
   double shortest_distance;
   int landmark_id = -1;
-  std::list<int> selected_ids;
+  int id_counter = 0;
+  // std::list<int> selected_ids;
+  std::vector<int> selected_ids;
   // LandmarkObservation *selected_landmark;
   LandmarkObservation *predicted_observation;
   const LandmarkObservation *landmark_observation;
+
+  selected_ids.reserve(landmark_observations.size());
 
   for (long unsigned int i = 0; i < predicted_observations.size(); ++i)
   {
@@ -145,16 +149,18 @@ void ParticleFilter::dataAssociation(vector<LandmarkObservation> &predicted_obse
       }
     }
 
-    predicted_observation->id = landmark_id;
-    selected_ids.push_back(landmark_id);
+    predicted_observation->id = selected_ids[id_counter++] = landmark_id;
+    // selected_ids.push_back(landmark_id);
   }
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const vector<LandmarkObservation> &observations,
-                                   const Map &map_landmarks)
+                                   const Map &map)
 {
   /**
+   * const Map &map_landmarks
+   * 
    * TODO: Update the weights of each particle using a mult-variate Gaussian 
    *   distribution. You can read more about this distribution here: 
    *   https://en.wikipedia.org/wiki/Multivariate_normal_distribution
@@ -167,6 +173,51 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    *   and the following is a good resource for the actual equation to implement
    *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
    */
+
+  vector<LandmarkObservation> predicted_observations;
+  LandmarkObservation *predicted_observation;
+  vector<LandmarkObservation> landmark_observations;
+  // LandmarkObservation *landmark_observation;
+  Particle *particle;
+  std::vector<int> associations;
+  std::vector<double> x_senses;
+  std::vector<double> y_senses;
+
+  predicted_observations.reserve(observations.size());
+  landmark_observations.reserve(map.landmark_list.size());
+  associations.reserve(observations.size());
+  x_senses.reserve(observations.size());
+  y_senses.reserve(observations.size());
+
+  for (int i = 0; i < landmark_observations.size(); ++i)
+  {
+    landmark_observations[i].id = map.landmark_list[i].id;
+    landmark_observations[i].x = map.landmark_list[i].x;
+    landmark_observations[i].y = map.landmark_list[i].y;
+  }
+
+  for (int i = 0; i < particles_.size(); ++i)
+  {
+    particle = &particles_[i];
+
+    for (int j = 0; j < observations.size(); ++j)
+    {
+      predicted_observation = &predicted_observations[j];
+      predicted_observation->x = transform_x_l2g(particle->x, particle->y, 0.0, particle->theta);
+      predicted_observation->y = transform_y_l2g(particle->x, particle->y, 0.0, particle->theta);
+    }
+
+    dataAssociation(predicted_observations, landmark_observations);
+
+    for (int k = 0; k < predicted_observations.size(); ++k)
+    {
+      associations[k] = predicted_observations[k].id;
+      x_senses[k] = predicted_observations[k].x;
+      y_senses[k] = predicted_observations[k].y;
+    }
+
+    setAssociations(*particle, associations, x_senses, y_senses);
+  }
 }
 
 void ParticleFilter::resample()
