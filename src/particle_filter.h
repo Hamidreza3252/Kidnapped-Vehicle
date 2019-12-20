@@ -100,7 +100,7 @@ public:
    * @param observations Vector of landmark observations
    * @param map Map class containing map landmarks
    */
-  void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObservation> &observations, const Map &map);
+  void updateWeights(double sensor_range, double landmark_devs[], const std::vector<LandmarkObservation> &observations, const Map &map);
 
   /**
    * resample Resamples from the updated set of particles to form
