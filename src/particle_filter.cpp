@@ -36,7 +36,7 @@ void ParticleFilter::init(const double &x, const double &y, const double &theta,
 
   // particles_count_ = *(&std_devs + 1) - std_devs;  // in case an input array is given
 
-  Particle *particle;
+  Particle particle = Particle();
 
   std::default_random_engine random_generator;
 
@@ -44,7 +44,7 @@ void ParticleFilter::init(const double &x, const double &y, const double &theta,
   std::normal_distribution<double> distribution_y(y, std_devs[1]);
   std::normal_distribution<double> distribution_theta(theta, std_devs[2]);
 
-  particles_count_ = 600;
+  particles_count_ = 400;
 
   particles_.reserve(particles_count_);
   weights_.reserve(particles_count_);
@@ -52,17 +52,17 @@ void ParticleFilter::init(const double &x, const double &y, const double &theta,
   for (int i = 0; i < particles_count_; ++i)
   {
     // particle = &particles_[i] = Particle();
-    particle = new Particle();
+    // particle = new Particle();
 
-    particle->id = i;
-    particle->x = distribution_x(random_generator);
-    particle->y = distribution_y(random_generator);
-    particle->theta = distribution_theta(random_generator);
+    particle.id = i;
+    particle.x = distribution_x(random_generator);
+    particle.y = distribution_y(random_generator);
+    particle.theta = distribution_theta(random_generator);
 
-    weights_.push_back(particle->weight = 1.0);
-    particles_.push_back(*particle);
+    weights_.push_back(particle.weight = 1.0);
+    particles_.push_back(particle);
 
-    delete particle;
+    // delete particle;
 
     // particles_[i] = *particle;
   }
@@ -85,23 +85,15 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
   std::default_random_engine random_generator;
   velocity_ratio = velocity / yaw_rate;
 
+  std::normal_distribution<double> distribution_x(0.0, std_devs[0]);
+  std::normal_distribution<double> distribution_y(0.0, std_devs[1]);
+  std::normal_distribution<double> distribution_theta(0.0, std_devs[2]);
+
+  int particle_index = 0;
   for (auto &particle : particles_)
   {
+    particle.id = particle_index++;
     particle.weight = 1.0;
-
-    std::normal_distribution<double> distribution_x(particle.x, std_devs[0]);
-    std::normal_distribution<double> distribution_y(particle.y, std_devs[1]);
-    std::normal_distribution<double> distribution_theta(particle.theta, std_devs[2]);
-
-    particle.x = distribution_x(random_generator);
-    particle.y = distribution_y(random_generator);
-    particle.theta = distribution_theta(random_generator);
-
-    theta_increment = particle.theta + yaw_rate * delta_t;
-
-    particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta));
-    particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment));
-    particle.theta = theta_increment;
 
     /*
     std::normal_distribution<double> distribution_x(particle.x, std_devs[0]);
@@ -112,6 +104,18 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
     particle.y = distribution_y(random_generator);
     particle.theta = distribution_theta(random_generator);
     */
+
+    theta_increment = particle.theta + yaw_rate * delta_t;
+
+    particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta)) + distribution_x(random_generator);
+    particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment)) + distribution_y(random_generator);
+    particle.theta = theta_increment + distribution_theta(random_generator);
+
+    // Hamid
+    if (std::fabs(particle.x) > 1.0e4 || std::fabs(particle.y) > 1.0e4)
+    {
+      std::cout << "STOP... " << std::endl;
+    }
   }
 }
 
@@ -157,7 +161,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObservation> &predicted
 
       bool found = (std::find(selected_ids.begin(), selected_ids.end(), landmark_observation.id) != selected_ids.end());
 
-      if(found)
+      if (found)
       {
         continue;
       }
@@ -243,14 +247,17 @@ void ParticleFilter::updateWeights(double sensor_range, double landmark_devs[],
     ++index;
   }
 
-  index = 0;
+  // index = 0;
 
   LandmarkObservation predicted_observation = LandmarkObservation();
+
+  int particle_index = 0;
 
   for (auto &particle : particles_)
   {
     // particle = &particles_[i];
 
+    /*
     predicted_observations.clear();
     predicted_observations.reserve(observations.size());
 
@@ -262,15 +269,23 @@ void ParticleFilter::updateWeights(double sensor_range, double landmark_devs[],
 
     y_senses.clear();
     y_senses.reserve(observations.size());
+    */
 
-    // int obs_index = 0;
+    int obs_index = 0;
     for (auto &observation : observations)
     {
       // predicted_observation = &predicted_observations[j];
       predicted_observation.x = transform_x_l2g(observation.x, observation.y, particle.x, particle.theta);
       predicted_observation.y = transform_y_l2g(observation.x, observation.y, particle.y, particle.theta);
 
-      predicted_observations.push_back(predicted_observation);
+      if (particle_index == 0)
+      {
+        predicted_observations.push_back(predicted_observation);
+      }
+      else
+      {
+        predicted_observations[obs_index++] = predicted_observation;
+      }
     }
 
     dataAssociation(predicted_observations, landmark_observations);
@@ -284,13 +299,45 @@ void ParticleFilter::updateWeights(double sensor_range, double landmark_devs[],
 
       if (pos_index >= landmark_indexes.size())
       {
-        std::cout << "Warning: pos_index >= landmark_indexes.size()";
+        std::cout << "Error: pos_index: " << pos_index << " not found with landmark_id: " << landmark_id << std::endl;
+        std::cout << "index: " << k << std::endl;
+        std::cout << "predicted x, y: " << predicted_observations[k].x << " , " << predicted_observations[k].y << std::endl;
+
+        // Hamid: just for DEBUG
+
+        int obs_index = 0;
+        for (auto &observation : observations)
+        {
+          // predicted_observation = &predicted_observations[j];
+          predicted_observation.x = transform_x_l2g(observation.x, observation.y, particle.x, particle.theta);
+          predicted_observation.y = transform_y_l2g(observation.x, observation.y, particle.y, particle.theta);
+
+          if (particle_index == 0)
+          {
+            predicted_observations.push_back(predicted_observation);
+          }
+          else
+          {
+            predicted_observations[obs_index++] = predicted_observation;
+          }
+        }
+
+        return;
       }
 
-      associations.push_back(landmark_id);
-      x_senses.push_back(predicted_observations[k].x);
-      y_senses.push_back(predicted_observations[k].y);
-
+      if (particle_index == 0)
+      {
+        associations.push_back(landmark_id);
+        x_senses.push_back(predicted_observations[k].x);
+        y_senses.push_back(predicted_observations[k].y);
+      }
+      else
+      {
+        associations[k] = landmark_id;
+        x_senses[k] = predicted_observations[k].x;
+        y_senses[k] = predicted_observations[k].y;
+      }
+      
       x_mu_x = landmark_observations[pos_index].x - predicted_observations[k].x;
       y_mu_y = landmark_observations[pos_index].y - predicted_observations[k].y;
 
@@ -299,7 +346,7 @@ void ParticleFilter::updateWeights(double sensor_range, double landmark_devs[],
       particle.weight *= std::exp(-0.5 * exp_temp) / denom;
     }
 
-    weights_[index++] = particle.weight;
+    weights_[particle_index++] = particle.weight;
 
     setAssociations(particle, associations, x_senses, y_senses);
   }
@@ -323,12 +370,14 @@ void ParticleFilter::resample()
   for (int i = 0; i < particles_count_; ++i)
   {
     int random_int = dd(generator);
-    // std::cout << "rnd: " << random_int << std::endl;
+    // std::cout << "rnd: " << random_int << "  -  particles_: " << particles_[random_int].id << " x: " << particles_[random_int].x << std::endl;
+    std::cout << "particles_: " << particles_[random_int].id << " x: " << particles_[random_int].x << std::endl;
     temp_particles.push_back(particles_[random_int]);
   }
 
   // particles_.swap(temp_particles);
 
+  particles_.clear();
   particles_ = temp_particles;
   
 }
