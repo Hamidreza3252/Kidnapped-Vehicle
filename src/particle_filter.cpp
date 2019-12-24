@@ -44,21 +44,30 @@ void ParticleFilter::init(const double &x, const double &y, const double &theta,
   std::normal_distribution<double> distribution_y(y, std_devs[1]);
   std::normal_distribution<double> distribution_theta(theta, std_devs[2]);
 
-  particles_count_ = 1000;
+  particles_count_ = 600;
 
   particles_.reserve(particles_count_);
+  weights_.reserve(particles_count_);
 
   for (int i = 0; i < particles_count_; ++i)
   {
     // particle = &particles_[i] = Particle();
-    particles_[i] = *(particle = new Particle());
+    particle = new Particle();
 
     particle->id = i;
     particle->x = distribution_x(random_generator);
     particle->y = distribution_y(random_generator);
     particle->theta = distribution_theta(random_generator);
-    particle->weight = 1.0;
+
+    weights_.push_back(particle->weight = 1.0);
+    particles_.push_back(*particle);
+
+    delete particle;
+
+    // particles_[i] = *particle;
   }
+
+  is_initialized_ = true;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_devs[], double velocity, double yaw_rate)
@@ -76,13 +85,9 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
   std::default_random_engine random_generator;
   velocity_ratio = velocity / yaw_rate;
 
-  for (auto particle : particles_)
+  for (auto &particle : particles_)
   {
-    theta_increment = particle.theta + yaw_rate * delta_t;
-
-    particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta));
-    particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment));
-    particle.theta = theta_increment;
+    particle.weight = 1.0;
 
     std::normal_distribution<double> distribution_x(particle.x, std_devs[0]);
     std::normal_distribution<double> distribution_y(particle.y, std_devs[1]);
@@ -91,6 +96,22 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
     particle.x = distribution_x(random_generator);
     particle.y = distribution_y(random_generator);
     particle.theta = distribution_theta(random_generator);
+
+    theta_increment = particle.theta + yaw_rate * delta_t;
+
+    particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta));
+    particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment));
+    particle.theta = theta_increment;
+
+    /*
+    std::normal_distribution<double> distribution_x(particle.x, std_devs[0]);
+    std::normal_distribution<double> distribution_y(particle.y, std_devs[1]);
+    std::normal_distribution<double> distribution_theta(particle.theta, std_devs[2]);
+
+    particle.x = distribution_x(random_generator);
+    particle.y = distribution_y(random_generator);
+    particle.theta = distribution_theta(random_generator);
+    */
   }
 }
 
@@ -109,7 +130,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObservation> &predicted
   double obtained_distance;
   double shortest_distance;
   int landmark_id = -1;
-  int id_counter = 0;
+  // int id_counter = 0;
   // std::list<int> selected_ids;
   std::vector<int> selected_ids;
   // LandmarkObservation *selected_landmark;
@@ -118,7 +139,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObservation> &predicted
 
   selected_ids.reserve(landmark_observations.size());
 
-  for (auto predicted_observation : predicted_observations)
+  for (auto &predicted_observation : predicted_observations)
   {
     // predicted_observation = &predicted_observations[i];
 
@@ -128,8 +149,9 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObservation> &predicted
     }
 
     shortest_distance = std::numeric_limits<double>::max();
+    // int index = 0;
 
-    for (auto landmark_observation : landmark_observations)
+    for (const auto &landmark_observation : landmark_observations)
     {
       // landmark_observation = &landmark_observations[j];
 
@@ -147,10 +169,15 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObservation> &predicted
       {
         shortest_distance = obtained_distance;
         landmark_id = landmark_observation.id;
+        // landmark_id = index++;
       }
     }
 
-    predicted_observation.id = selected_ids[id_counter++] = landmark_id;
+    selected_ids.push_back(predicted_observation.id = landmark_id);
+
+    // std::cout << "hamid: " << landmark_id << std::endl;
+
+    // predicted_observation.id = selected_ids[id_counter++] = landmark_id;
     // selected_ids.push_back(landmark_id);
   }
 }
@@ -182,58 +209,97 @@ void ParticleFilter::updateWeights(double sensor_range, double landmark_devs[],
   // LandmarkObservation *landmark_observation;
   // Particle *particle;
   std::vector<int> associations;
+  std::vector<int> landmark_indexes;
   std::vector<double> x_senses;
   std::vector<double> y_senses;
 
   double sigma_inv_11 = 1.0 / landmark_devs[0];
   double sigma_inv_22 = 1.0 / landmark_devs[1];
+  double denom = std::sqrt(2*M_PI*(landmark_devs[0] * landmark_devs[1]));
   double x_mu_x;
   double y_mu_y;
 
   predicted_observations.reserve(observations.size());
+  landmark_indexes.reserve(map.landmark_list.size());
+  // predicted_observations = observations;
   landmark_observations.reserve(map.landmark_list.size());
-  associations.reserve(observations.size());
-  x_senses.reserve(observations.size());
-  y_senses.reserve(observations.size());
+  // associations.reserve(observations.size());
+  // x_senses.reserve(observations.size());
+  // y_senses.reserve(observations.size());
 
   int index = 0;
 
   // std::vector<std::pair<LandmarkObservation, Map::LandmarkData>> zipped_data = {landmark_observations, map.landmark_list};
   // std::pair<aaa, Map::LandmarkData> zipped_data(landmark_observations, map.landmark_list);
 
-  for (auto map_landmark : map.landmark_list)
+  for (const auto &map_landmark : map.landmark_list)
   {
-    landmark_observations[index].id = map_landmark.id;
+    landmark_observations.push_back(LandmarkObservation());
+
+    landmark_indexes.push_back(landmark_observations[index].id = map_landmark.id);
     landmark_observations[index].x = map_landmark.x;
     landmark_observations[index].y = map_landmark.y;
 
     ++index;
   }
 
-  for (auto particle : particles_)
+  index = 0;
+
+  LandmarkObservation predicted_observation = LandmarkObservation();
+
+  for (auto &particle : particles_)
   {
     // particle = &particles_[i];
 
-    for (auto predicted_observation : observations)
+    predicted_observations.clear();
+    predicted_observations.reserve(observations.size());
+
+    associations.clear();
+    associations.reserve(observations.size());
+
+    x_senses.clear();
+    x_senses.reserve(observations.size());
+
+    y_senses.clear();
+    y_senses.reserve(observations.size());
+
+    // int obs_index = 0;
+    for (auto &observation : observations)
     {
       // predicted_observation = &predicted_observations[j];
-      predicted_observation.x = transform_x_l2g(predicted_observation.x, predicted_observation.y, particle.x, particle.theta);
-      predicted_observation.y = transform_y_l2g(predicted_observation.x, predicted_observation.y, particle.y, particle.theta);
+      predicted_observation.x = transform_x_l2g(observation.x, observation.y, particle.x, particle.theta);
+      predicted_observation.y = transform_y_l2g(observation.x, observation.y, particle.y, particle.theta);
+
+      predicted_observations.push_back(predicted_observation);
     }
 
     dataAssociation(predicted_observations, landmark_observations);
 
     for (unsigned long int k = 0; k < predicted_observations.size(); ++k)
     {
-      associations[k] = predicted_observations[k].id;
-      x_senses[k] = predicted_observations[k].x;
-      y_senses[k] = predicted_observations[k].y;
+      long unsigned int landmark_id = predicted_observations[k].id;
 
-      x_mu_x = landmark_observations[k].x - predicted_observations[k].x;
-      y_mu_y = landmark_observations[k].y - predicted_observations[k].y;
+      // ptrdiff_t pos_index = std::find(landmark_observations.begin(), landmark_observations.end(), landmark_id) - landmark_observations.begin();
+      long unsigned int pos_index = std::find(landmark_indexes.begin(), landmark_indexes.end(), landmark_id) - landmark_indexes.begin();
 
-      particle.weight *= std::exp(-0.5 * ((x_mu_x*sigma_inv_11) * x_mu_x + (y_mu_y*sigma_inv_22) * y_mu_y));
+      if (pos_index >= landmark_indexes.size())
+      {
+        std::cout << "Warning: pos_index >= landmark_indexes.size()";
+      }
+
+      associations.push_back(landmark_id);
+      x_senses.push_back(predicted_observations[k].x);
+      y_senses.push_back(predicted_observations[k].y);
+
+      x_mu_x = landmark_observations[pos_index].x - predicted_observations[k].x;
+      y_mu_y = landmark_observations[pos_index].y - predicted_observations[k].y;
+
+      double exp_temp = ((x_mu_x*sigma_inv_11) * x_mu_x + (y_mu_y*sigma_inv_22) * y_mu_y) / 1.0e5;
+
+      particle.weight *= std::exp(-0.5 * exp_temp) / denom;
     }
+
+    weights_[index++] = particle.weight;
 
     setAssociations(particle, associations, x_senses, y_senses);
   }
@@ -256,8 +322,12 @@ void ParticleFilter::resample()
 
   for (int i = 0; i < particles_count_; ++i)
   {
-    temp_particles[i] = particles_[dd(generator)];
+    int random_int = dd(generator);
+    // std::cout << "rnd: " << random_int << std::endl;
+    temp_particles.push_back(particles_[random_int]);
   }
+
+  // particles_.swap(temp_particles);
 
   particles_ = temp_particles;
   
