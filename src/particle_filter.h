@@ -41,6 +41,8 @@ private:
   // Vector of weights of all particles
   std::vector<double> weights_;
 
+  int update_step_counter_ ;
+
 public:
   // Set of current particles
   std::vector<Particle> particles_;

@@ -44,7 +44,8 @@ void ParticleFilter::init(const double &x, const double &y, const double &theta,
   std::normal_distribution<double> distribution_y(y, std_devs[1]);
   std::normal_distribution<double> distribution_theta(theta, std_devs[2]);
 
-  particles_count_ = 400;
+  update_step_counter_ = 0;
+  particles_count_ = 500;
 
   particles_.reserve(particles_count_);
   weights_.reserve(particles_count_);
@@ -81,13 +82,29 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
   // Particle *particle;
   double velocity_ratio;
   double theta_increment;
+  double zero_yaw_rate_tol = 1.0e-6;
+  bool yaw_rate_is_zero;
+
+  /*
+  // Hamid: for debug only
+  if (update_step_counter_ == 904)
+  {
+    std::cout << "STOP... " << std::endl;
+  }
+  */
 
   std::default_random_engine random_generator;
-  velocity_ratio = velocity / yaw_rate;
 
   std::normal_distribution<double> distribution_x(0.0, std_devs[0]);
   std::normal_distribution<double> distribution_y(0.0, std_devs[1]);
   std::normal_distribution<double> distribution_theta(0.0, std_devs[2]);
+
+  yaw_rate_is_zero = std::fabs(yaw_rate) < zero_yaw_rate_tol;
+
+  if (!yaw_rate_is_zero)
+  {
+    velocity_ratio = velocity / yaw_rate;
+  }
 
   int particle_index = 0;
   for (auto &particle : particles_)
@@ -105,18 +122,24 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
     particle.theta = distribution_theta(random_generator);
     */
 
-    theta_increment = particle.theta + yaw_rate * delta_t;
-
-    particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta)) + distribution_x(random_generator);
-    particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment)) + distribution_y(random_generator);
-    particle.theta = theta_increment + distribution_theta(random_generator);
-
-    // Hamid
-    if (std::fabs(particle.x) > 1.0e4 || std::fabs(particle.y) > 1.0e4)
+    if (yaw_rate_is_zero)
     {
-      std::cout << "STOP... " << std::endl;
+      particle.x += velocity * delta_t + distribution_x(random_generator);
+      particle.y += distribution_y(random_generator);
+      // particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment)) + distribution_y(random_generator);
+      // particle.theta = theta_increment + distribution_theta(random_generator);
+    }
+    else
+    {
+      theta_increment = particle.theta + yaw_rate * delta_t;
+
+      particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta)) + distribution_x(random_generator);
+      particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment)) + distribution_y(random_generator);
+      particle.theta = theta_increment + distribution_theta(random_generator);
     }
   }
+
+  ++update_step_counter_;
 }
 
 // void ParticleFilter::dataAssociation(vector<LandmarkObs> &predicted, const vector<LandmarkObs> &observations)
@@ -146,6 +169,11 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObservation> &predicted
   for (auto &predicted_observation : predicted_observations)
   {
     // predicted_observation = &predicted_observations[i];
+
+    if (selected_ids.size() >= predicted_observations.size())
+    {
+      return;
+    }
 
     if (predicted_observation.id != -1)
     {
@@ -303,25 +331,6 @@ void ParticleFilter::updateWeights(double sensor_range, double landmark_devs[],
         std::cout << "index: " << k << std::endl;
         std::cout << "predicted x, y: " << predicted_observations[k].x << " , " << predicted_observations[k].y << std::endl;
 
-        // Hamid: just for DEBUG
-
-        int obs_index = 0;
-        for (auto &observation : observations)
-        {
-          // predicted_observation = &predicted_observations[j];
-          predicted_observation.x = transform_x_l2g(observation.x, observation.y, particle.x, particle.theta);
-          predicted_observation.y = transform_y_l2g(observation.x, observation.y, particle.y, particle.theta);
-
-          if (particle_index == 0)
-          {
-            predicted_observations.push_back(predicted_observation);
-          }
-          else
-          {
-            predicted_observations[obs_index++] = predicted_observation;
-          }
-        }
-
         return;
       }
 
@@ -371,7 +380,8 @@ void ParticleFilter::resample()
   {
     int random_int = dd(generator);
     // std::cout << "rnd: " << random_int << "  -  particles_: " << particles_[random_int].id << " x: " << particles_[random_int].x << std::endl;
-    std::cout << "particles_: " << particles_[random_int].id << " x: " << particles_[random_int].x << std::endl;
+    // Hamid: cout is for debug
+    // std::cout << "particles_: " << particles_[random_int].id << " x: " << particles_[random_int].x << std::endl;
     temp_particles.push_back(particles_[random_int]);
   }
 
