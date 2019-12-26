@@ -45,7 +45,7 @@ void ParticleFilter::init(const double &x, const double &y, const double &theta,
   std::normal_distribution<double> distribution_theta(theta, std_devs[2]);
 
   update_step_counter_ = 0;
-  particles_count_ = 500;
+  particles_count_ = 600;
 
   particles_.reserve(particles_count_);
   weights_.reserve(particles_count_);
@@ -85,19 +85,9 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
   double zero_yaw_rate_tol = 1.0e-6;
   bool yaw_rate_is_zero;
 
-  /*
-  // Hamid: for debug only
-  if (update_step_counter_ == 904)
-  {
-    std::cout << "STOP... " << std::endl;
-  }
-  */
-
+  // std::random_device rd;
+  // std::mt19937 random_generator(rd());
   std::default_random_engine random_generator;
-
-  std::normal_distribution<double> distribution_x(0.0, std_devs[0]);
-  std::normal_distribution<double> distribution_y(0.0, std_devs[1]);
-  std::normal_distribution<double> distribution_theta(0.0, std_devs[2]);
 
   yaw_rate_is_zero = std::fabs(yaw_rate) < zero_yaw_rate_tol;
 
@@ -112,31 +102,30 @@ void ParticleFilter::prediction(double delta_t, double std_devs[], double veloci
     particle.id = particle_index++;
     particle.weight = 1.0;
 
-    /*
-    std::normal_distribution<double> distribution_x(particle.x, std_devs[0]);
-    std::normal_distribution<double> distribution_y(particle.y, std_devs[1]);
-    std::normal_distribution<double> distribution_theta(particle.theta, std_devs[2]);
-
-    particle.x = distribution_x(random_generator);
-    particle.y = distribution_y(random_generator);
-    particle.theta = distribution_theta(random_generator);
-    */
-
     if (yaw_rate_is_zero)
     {
-      particle.x += velocity * delta_t + distribution_x(random_generator);
-      particle.y += distribution_y(random_generator);
-      // particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment)) + distribution_y(random_generator);
-      // particle.theta = theta_increment + distribution_theta(random_generator);
+      particle.x += velocity * delta_t;
     }
     else
     {
       theta_increment = particle.theta + yaw_rate * delta_t;
 
-      particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta)) + distribution_x(random_generator);
-      particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment)) + distribution_y(random_generator);
-      particle.theta = theta_increment + distribution_theta(random_generator);
+      // particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta)) + distribution_x(random_generator);
+      // particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment)) + distribution_y(random_generator);
+      // particle.theta = theta_increment + distribution_theta(random_generator);
+
+      particle.x += velocity_ratio * (std::sin(theta_increment) - std::sin(particle.theta));
+      particle.y += velocity_ratio * (std::cos(particle.theta) - std::cos(theta_increment));
+      particle.theta = theta_increment;
     }
+
+    std::normal_distribution<double> distribution_x(particle.x, std_devs[0]);
+    std::normal_distribution<double> distribution_y(particle.y, std_devs[1]);
+    std::normal_distribution<double> distribution_theta(particle.theta, std_devs[2]);
+    
+    particle.x = distribution_x(random_generator);
+    particle.y = distribution_y(random_generator);
+    particle.theta = distribution_theta(random_generator);
   }
 
   ++update_step_counter_;
