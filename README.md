@@ -66,7 +66,8 @@ Here is the main protocol that main.cpp uses for uWebSocketIO in communicating w
   ["best_particle_sense_y"] <= list of sensed y positions
 
 ## 4. Implementation of the Particle Filter 
-The directory structure of this repository is as follows:
+
+### 4-1. The directory structure of this repository is as follows: 
 
 ```
 root
@@ -88,6 +89,27 @@ root
     |   particle_filter.cpp
     |   particle_filter.h
 ```
+
+## 4-2. The Key Funcions 
+The key functionalities are included in `ParticleFilter` class, defined in `particle_filter.cpp` with the following member fucntions (please refer to the source code and the comments in the code for more details): 
+
+- `ParticleFilter::init`: This function is defined to: 
+  - 1. Set the number of particles. 
+  - 2. Initialize all particles to the first position (based on estimates of x, y, theta and their uncertainties from GPS) and all weights to 1.0.  
+  
+  The number of particles is set to be 800 at least. Based on my exercises, a particle count between 800 and 1200 shoud be a good trade off between accuracy and performance. 
+
+- `ParticleFilter::prediction`: This function predicts the state for the next time step using the process model. There are two ways to add random Gaussian noise to the particles' predicted states. In the first approach, we can define distributions with mean zero (0.0) and the specified standard deviations for each state. Then we will add this Gaussian noise to the previous particle states and then we will procees with the rest of the calculation (prediction process). In the second approach, we can first update the states using the previous states and then add random Gaussian noise to it, by setting the mean to the updated predicted state. For particle filter, it should not matter much which approach to take, but it seems that the first approach makes more sense from process or motion model point of view. Therefore, I chose the first approach to add random Gaussian noise to the particles' states. 
+
+- `ParticleFilter::dataAssociation`: This method, which is called in `updateWeights` method, finds the predicted measurement that is closest to each observed measurement and assign the observed measurement to this particular landmark. This is done by setting the id of each predicted observations. 
+
+- `ParticleFilter::updateWeights`: This method updates the weights of each particle using a mult-variate Gaussian distribution as follows: 
+  -  Selecting the most possible map landmark observations: This step selets the landmark observations that need to be considered based on the the location of the best particle estimate from the previous state and the provided sensor range. 
+  - Finding the predicted measurement that is closest to each observed measurement using `dataAssociation` method explained above. It should be noted that the observations are given in the vehicles coordinate system; However, the particles are located according to the MAP'S coordinate system. Therefore, I transformed between the two systems. 
+  - Updating the weight of each particle through combining the probabilities of each observation for each particle. Based on the scales of the measurements and the particles' locations, I had to divide the components that goes in the `exp` function by `1.0e5` to avoid overflowing the numbers. 
+  
+- `ParticleFilter::resample`: This method is used to resample particles with replacement with probability proportional to their weight. 
+
 
 ## 5. Inputs to the Particle Filter
 You can find the inputs to the particle filter in the `data` directory.

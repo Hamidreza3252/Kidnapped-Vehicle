@@ -46,6 +46,7 @@ private:
 public:
   // Set of current particles
   std::vector<Particle> particles_;
+  Particle best_particle_;
 
   // Constructor
   // @param particles_count_ Number of particles

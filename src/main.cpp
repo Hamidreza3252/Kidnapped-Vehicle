@@ -145,6 +145,8 @@ int main()
           std::cout << "highest w " << highest_weight << std::endl;
           std::cout << "average w " << weight_sum / num_particles << std::endl;
 
+          pf.best_particle_ = best_particle;
+
           json msgJson;
           msgJson["best_particle_x"] = best_particle.x;
           msgJson["best_particle_y"] = best_particle.y;
